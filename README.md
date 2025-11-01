@@ -1,45 +1,150 @@
-This is a [Next.js](https://nextjs.org/) template to use when reporting a [bug in the Next.js repository](https://github.com/vercel/next.js/issues) with the `app/` directory.
+# Next.js Bug Reproduction
 
-## Getting Started
+This repository reproduces a caching issue with Next.js 16.0.1 "use cache: private" directive.
 
-These are the steps you should follow when creating a bug report:
+## Bug Report
 
-- Bug reports must be verified against the `next@canary` release. The canary version of Next.js ships daily and includes all features and fixes that have not been released to the stable version yet. Think of canary as a public beta. Some issues may already be fixed in the canary version, so please verify that your issue reproduces before opening a new issue. Issues not verified against `next@canary` will be closed after 30 days.
-- Make sure your issue is not a duplicate. Use the [GitHub issue search](https://github.com/vercel/next.js/issues) to see if there is already an open issue that matches yours. If that is the case, upvoting the other issue's first comment is desirable as we often prioritize issues based on the number of votes they receive. Note: Adding a "+1" or "same issue" comment without adding more context about the issue should be avoided. If you only find closed related issues, you can link to them using the issue number and `#`, eg.: `I found this related issue: #3000`.
-- If you think the issue is not in Next.js, the best place to ask for help is our [Discord community](https://nextjs.org/discord) or [GitHub discussions](https://github.com/vercel/next.js/discussions). Our community is welcoming and can often answer a project-related question faster than the Next.js core team.
-- Make the reproduction as minimal as possible. Try to exclude any code that does not help reproducing the issue. E.g. if you experience problems with Routing, including ESLint configurations or API routes aren't necessary. The less lines of code is to read through, the easier it is for the Next.js team to investigate. It may also help catching bugs in your codebase before publishing an issue.
-- Don't forget to create a new repository on GitHub and make it public so that anyone can view it and reproduce it.
+### Issue Summary
 
-## How to use this template
+When using `"use cache: private"` directive with `cookies()` API in a cached function, the cache is not being utilized during client-side navigation. The function re-executes on every navigation instead of serving from cache.
 
-Execute [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) with [npm](https://docs.npmjs.com/cli/init), [Yarn](https://yarnpkg.com/lang/en/docs/cli/create/), or [pnpm](https://pnpm.io) to bootstrap the example:
+### To Reproduce
 
-```bash
-npx create-next-app --example reproduction-template reproduction-app
+#### 1. Cached Function with cookies() API
+
+```typescript
+// src/app/lib/user.ts
+import { cookies } from "next/headers";
+import { cacheTag, cacheLife } from "next/cache";
+
+export async function getUser() {
+    "use cache: private";
+    cacheTag(`userdata`);
+    cacheLife({ stale: 60 });
+
+    const sessionId = (await cookies()).get('session-id')?.value || 'guest'
+
+    console.log("Fetching user data"); // This logs on every navigation
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    const timestamp = new Date().toISOString();
+
+    return {
+        user: {
+            name: "Ajay",
+            email: "ajay@example.com"
+        },
+        timestamp: timestamp,
+    }
+}
 ```
 
-```bash
-yarn create next-app --example reproduction-template reproduction-app
+#### 2. Server Component Page
+
+```typescript
+// src/app/about/page.tsx
+import { Suspense } from "react";
+import { getUser } from "../lib/user";
+
+export default async function Page() {
+    return (
+        <div>
+            <h1>About Page</h1>
+            <Suspense fallback={<p>Loading...</p>}>
+                <Content />
+            </Suspense>
+        </div>
+    )
+}
+
+async function Content() {
+    const data = await getUser();
+    return (
+        <div>
+            <h1>{data.user.name}</h1>
+            <p>Fetched at: {data.timestamp}</p>
+        </div>
+    );
+}
 ```
 
-```bash
-pnpm create next-app --example reproduction-template reproduction-app
+#### 3. Next.js Configuration
+
+```typescript
+// next.config.ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+};
+
+export default nextConfig;
 ```
 
-## Learn More
+#### 4. Steps to Reproduce
 
-To learn more about Next.js, take a look at the following resources:
+1. Navigate to the page (e.g., `/about`)
+2. Navigate away to another page
+3. Navigate back using client-side navigation (using `<Link>` component)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [How to Contribute to Open Source (Next.js)](https://www.youtube.com/watch?v=cuoNzXFLitc) - a video tutorial by Lee Robinson
-- [Triaging in the Next.js repository](https://github.com/vercel/next.js/blob/canary/contributing.md#triaging) - how we work on issues
-- [CodeSandbox](https://codesandbox.io/s/github/vercel/next.js/tree/canary/examples/reproduction-template) - Edit this repository on CodeSandbox
+### Expected Behavior
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+The cached function should return the cached result during the 30-second stale period, showing:
+- The same timestamp on subsequent navigations
+- No "Fetching user data" log in the console after initial fetch
 
-## Deployment
+### Actual Behavior
 
-If your reproduction needs to be deployed, the easiest way is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The function re-executes on every client-side navigation:
+- Shows a new timestamp each time
+- Logs "Fetching user data" in the console on every navigation
+- The 5-second delay occurs on each navigation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Environment Information
+
+**Operating System:**
+- Platform: darwin
+- Version: Darwin 25.0.0
+
+**Binaries:**
+- Node: 22.20.0
+- npm: 10.9.3
+
+**Relevant Packages:**
+- next: 16.0.1
+- react: 19.2.0
+- react-dom: 19.2.0
+- typescript: 5.x
+
+## Affected Areas
+
+- App Router
+- Caching (ISR, Data Cache, Full Route Cache)
+
+## Affected Stages
+
+- `next dev` (local)
+- `next build` (local)
+- `next start` (local)
+
+## Additional Context
+
+- The issue persists even when explicitly setting `cacheLife({ stale: 60 })` instead of using presets
+- Tried setting `experimental.staleTimes.dynamic: 0` but it didn't resolve the issue
+- The `"use cache: private"` directive is supposed to work with `cookies()` API according to the documentation
+- This appears to be related to Router Cache interaction with function-level caching during client-side navigation
+
+## Running the Reproduction
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Or build and run production
+npm run build
+npm start
+```
+
+Navigate to the About page to observe the caching behavior.
