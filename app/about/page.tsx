@@ -18,7 +18,7 @@ export default async function Page() {
         <div>
             <h1>About Page</h1>
             <p>Using "use cache: private" in <pre>getUser</pre> function</p>
-            <Suspense fallback={<p>Loading with fake 5s sleep...</p>}>
+            <Suspense fallback={<p>Loading with fake 2s sleep...</p>}>
                 <Content />
             </Suspense>
         </div>

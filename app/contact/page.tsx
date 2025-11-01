@@ -13,7 +13,7 @@ async function Content() {
     console.log("Got user cookies", sessionId)
 
     console.log("Fetching user data");
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     const timestamp = new Date().toISOString();
 
     return (
@@ -29,7 +29,7 @@ export default async function Page() {
             <h1>Contact Page</h1>
             <p>Using "use cache: private" in <pre>Content</pre> component</p>
 
-            <Suspense fallback={<p>Loading with fake 5s sleep...</p>}>
+            <Suspense fallback={<p>Loading with fake 2s sleep...</p>}>
                 <Content />
             </Suspense>
         </div>
