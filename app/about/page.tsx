@@ -5,7 +5,7 @@ async function Content() {
     const data =  await getUser();
 
     return (
-        <div>
+        <div className="bg-zinc-100 p-4 rounded-md mt-3">
             <h1>{data.user.name}</h1>
             <small>{data.user.email}</small>
             <p>Fetched at: {data.timestamp}</p>
@@ -15,9 +15,9 @@ async function Content() {
 
 export default async function Page() {
     return (
-        <div>
+        <div className="w-full">
             <h1>About Page</h1>
-            <p>Using "use cache: private" in <pre>getUser</pre> function</p>
+            <p>Using "use cache: private" in getUser function</p>
             <Suspense fallback={<p>Loading with fake 2s sleep...</p>}>
                 <Content />
             </Suspense>

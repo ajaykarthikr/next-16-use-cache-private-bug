@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import "./global.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,12 +24,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="min-h-screen bg-zinc-50 font-sans dark:bg-black">
-          <h1 className="text-4xl font-bold text-black dark:text-white">Welcome to My App</h1>
+        <div className="min-h-screen font-sans w-full">
+          <h1 className="text-4xl font-bold ">Bug Demo use cache: private</h1>
           <div className="flex gap-2">
             <Link href="/" className="text-blue-500 hover:underline">
               Home
@@ -43,7 +44,7 @@ export default function RootLayout({
               Services
             </Link>
           </div>
-          <div className="p-4">
+          <div className="p-4 w-full">
             {children}
           </div>
         </div>
